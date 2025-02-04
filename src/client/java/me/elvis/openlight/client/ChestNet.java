@@ -6,7 +6,18 @@ import baritone.api.command.Command;
 import baritone.api.command.argument.IArgConsumer;
 import baritone.api.pathing.goals.Goal;
 import baritone.api.pathing.goals.GoalXZ;
+import net.minecraft.block.BlockState;
+import net.minecraft.block.ChestBlock;
+import net.minecraft.block.SpawnerBlock;
+import net.minecraft.block.entity.BlockEntity;
+import net.minecraft.block.entity.ChestBlockEntity;
+import net.minecraft.block.entity.MobSpawnerBlockEntity;
+import net.minecraft.block.entity.Spawner;
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.entity.vehicle.SpawnerMinecartEntity;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Vec3d;
+import net.minecraft.world.World;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -76,18 +87,23 @@ public class ChestNet extends Command
 
         Goal goal = new GoalXZ(x, z);
         BaritoneAPI.getProvider().getPrimaryBaritone().getCustomGoalProcess().setGoalAndPath(goal);
-        //need to add a new check to see if the player is in the goal
-
 
 
         scheduler.scheduleAtFixedRate(() ->
         {
-            if (BaritoneAPI.getProvider().getPrimaryBaritone().getPathingBehavior().getInProgress().isPresent()
-                    || !BaritoneAPI.getProvider().getPrimaryBaritone().getCustomGoalProcess().isActive()
-                    && !BaritoneAPI.getProvider().getPrimaryBaritone().getPathingBehavior().isPathing()
-                    || !BaritoneAPI.getProvider().getPrimaryBaritone().getCustomGoalProcess().getGoal().isInGoal(x, y, z))
+
+            Vec3d playerPos = BaritoneAPI.getProvider().getPrimaryBaritone().getPlayerContext().playerFeetAsVec();
+            boolean isAtGoal = goal.isInGoal(BlockPos.ofFloored(playerPos));
+
+
+            if (isAtGoal || !BaritoneAPI.getProvider().getPrimaryBaritone().getCustomGoalProcess().isActive()
+                    && !BaritoneAPI.getProvider().getPrimaryBaritone().getPathingBehavior().isPathing())
             {
                 LOGGER.info("Goal reached at (" + x + ", " + z + ")!");
+
+                searchForSpawner(x, y, z);
+                searchAndCheckChest(x, y, z);
+
                 pathing(a, index + 1, scheduler);
             }
             else
@@ -96,6 +112,58 @@ public class ChestNet extends Command
             }
         }, 0, 5, TimeUnit.SECONDS);
 
+    }
+
+    public boolean searchForSpawner(int x, int y, int z)
+    {
+        BlockPos allegedSpawnerPos = new BlockPos(x, y,z );
+        World world = MinecraftClient.getInstance().world;
+        boolean isThereSpawner = false;
+
+        for (BlockPos pos : BlockPos.iterate(allegedSpawnerPos.add(-5, 0, -5), allegedSpawnerPos.add(5, 5, 5)))
+        {
+            BlockState state = world.getBlockState(pos);
+
+            if (state.getBlock() instanceof SpawnerBlock)
+            {
+                BlockEntity blockEntity = world.getBlockEntity(pos);
+
+                if (blockEntity instanceof MobSpawnerBlockEntity)
+                {
+
+                    LOGGER.info("Spawner found at: " + pos);
+                    isThereSpawner = true;
+                }
+            }
+        }
+        return isThereSpawner;
+
+    }
+
+
+    public boolean searchAndCheckChest(int x, int y, int z)
+    {
+        BlockPos spawnerPos = new BlockPos(x, y, z);
+        World world = MinecraftClient.getInstance().world;
+        boolean isThereChest = false;
+
+
+        for (BlockPos pos : BlockPos.iterate(spawnerPos.add(-10, 0, -10), spawnerPos.add(10, 10, 10)))
+        {
+            BlockState state = world.getBlockState(pos);
+
+            if (state.getBlock() instanceof ChestBlock)
+            {
+                BlockEntity blockEntity = world.getBlockEntity(pos);
+
+                if (blockEntity instanceof ChestBlockEntity)
+                {
+                    LOGGER.info("Chest found at: " + pos);
+                    isThereChest = true;
+                }
+            }
+        }
+        return isThereChest;
     }
 
     public List<String[]> csvReader()
