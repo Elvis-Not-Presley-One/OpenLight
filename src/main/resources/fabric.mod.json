@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "id": "openlight",
+  "version": "${version}",
+  "name": "OpenLight",
+  "description": "",
+  "authors": [],
+  "contact": {},
+  "license": "MIT",
+  "icon": "assets/openlight/icon.png",
+  "environment": "client",
+  "entrypoints": {
+    "client": [
+      "me.elvis.openlight.client.OpenlightClient"
+    ],
+    "main": [
+      "me.elvis.openlight.Openlight"
+    ]
+  },
+  "mixins": [
+    "openlight.mixins.json",
+    {
+      "config": "openlight.client.mixins.json",
+      "environment": "client"
+    }
+  ],
+  "depends": {
+    "fabricloader": ">=${loader_version}",
+    "fabric": "*",
+    "minecraft": "${minecraft_version}"
+  }
+}
