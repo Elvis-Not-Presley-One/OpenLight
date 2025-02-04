@@ -12,9 +12,7 @@ import net.minecraft.block.SpawnerBlock;
 import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.block.entity.ChestBlockEntity;
 import net.minecraft.block.entity.MobSpawnerBlockEntity;
-import net.minecraft.block.entity.Spawner;
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.entity.vehicle.SpawnerMinecartEntity;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.World;
@@ -102,7 +100,15 @@ public class ChestNet extends Command
                 LOGGER.info("Goal reached at (" + x + ", " + z + ")!");
 
                 searchForSpawner(x, y, z);
-                searchAndCheckChest(x, y, z);
+
+                if (searchForChest(x, y, z))
+                {
+                    List<int[]> chestLocationsArray = getChestLocation(x, y, z);
+                    LOGGER.info(chestLocationsArray.toString());
+
+                    BaritoneAPI.getProvider().getPrimaryBaritone().getCustomGoalProcess().setGoal(goal);
+                    BaritoneAPI.getProvider().getPrimaryBaritone().getCustomGoalProcess().path();
+                }
 
                 pathing(a, index + 1, scheduler);
             }
@@ -136,12 +142,38 @@ public class ChestNet extends Command
                 }
             }
         }
+        LOGGER.info(String.valueOf(isThereSpawner));
         return isThereSpawner;
 
     }
 
+    public List<int[]> getChestLocation(int x, int y, int z) {
+        BlockPos spawnerPos = new BlockPos(x, y, z);
+        World world = MinecraftClient.getInstance().world;
+        List<int[]> LocationArray = new ArrayList<>();
+        int[] blockPosArray;
+        for (BlockPos pos : BlockPos.iterate(spawnerPos.add(-10, 0, -10), spawnerPos.add(10, 10, 10))) {
+            BlockState state = world.getBlockState(pos);
 
-    public boolean searchAndCheckChest(int x, int y, int z)
+            if (state.getBlock() instanceof ChestBlock) {
+                BlockEntity blockEntity = world.getBlockEntity(pos);
+
+                if (blockEntity instanceof ChestBlockEntity)
+                {
+                    x = pos.getX();
+                    y = pos.getY();
+                    z = pos.getZ();
+
+                    blockPosArray = new int[]{x, y, z};
+                    LocationArray.add(blockPosArray);
+                }
+            }
+        }
+        return LocationArray;
+    }
+
+
+    public boolean searchForChest(int x, int y, int z)
     {
         BlockPos spawnerPos = new BlockPos(x, y, z);
         World world = MinecraftClient.getInstance().world;
