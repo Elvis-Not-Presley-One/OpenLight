@@ -79,6 +79,7 @@ public class ChestNet extends Command
         //need to add a new check to see if the player is in the goal
 
 
+
         scheduler.scheduleAtFixedRate(() ->
         {
             if (BaritoneAPI.getProvider().getPrimaryBaritone().getPathingBehavior().getInProgress().isPresent()
