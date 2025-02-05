@@ -5,6 +5,7 @@ import baritone.api.IBaritone;
 import baritone.api.command.Command;
 import baritone.api.command.argument.IArgConsumer;
 import baritone.api.pathing.goals.Goal;
+import baritone.api.pathing.goals.GoalBlock;
 import baritone.api.pathing.goals.GoalXZ;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.ChestBlock;
@@ -28,6 +29,7 @@ import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 
@@ -104,10 +106,27 @@ public class ChestNet extends Command
                 if (searchForChest(x, y, z))
                 {
                     List<int[]> chestLocationsArray = getChestLocation(x, y, z);
-                    LOGGER.info(chestLocationsArray.toString());
+                    int indexCounter = chestLocationsArray.size();
 
-                    BaritoneAPI.getProvider().getPrimaryBaritone().getCustomGoalProcess().setGoal(goal);
-                    BaritoneAPI.getProvider().getPrimaryBaritone().getCustomGoalProcess().path();
+                    LOGGER.info("Chest spawners locations: " +
+                            chestLocationsArray.stream()
+                                    .map(Arrays::toString)
+                                    .collect(Collectors.joining(", ")));
+
+                    for (int chestIndex = 0; chestIndex < indexCounter; chestIndex++)
+                    {
+                        int[] aaa =chestLocationsArray.get(chestIndex);
+                        LOGGER.info(Arrays.toString(aaa));
+
+                        int chestX = (aaa[0]);
+                        int chestY = (aaa[1]);
+                        int chestZ = (aaa[2]);
+
+                        LOGGER.info(String.valueOf(chestX));
+
+                        BaritoneAPI.getProvider().getPrimaryBaritone().getCustomGoalProcess().setGoalAndPath(new GoalBlock(chestX, chestY, chestZ));
+                        LOGGER.info("Set New Goal to" + chestX + chestY + chestZ);
+                    }
                 }
 
                 pathing(a, index + 1, scheduler);
@@ -150,7 +169,7 @@ public class ChestNet extends Command
     public List<int[]> getChestLocation(int x, int y, int z) {
         BlockPos spawnerPos = new BlockPos(x, y, z);
         World world = MinecraftClient.getInstance().world;
-        List<int[]> LocationArray = new ArrayList<>();
+        List<int[]> locationArray = new ArrayList<>();
         int[] blockPosArray;
         for (BlockPos pos : BlockPos.iterate(spawnerPos.add(-10, 0, -10), spawnerPos.add(10, 10, 10))) {
             BlockState state = world.getBlockState(pos);
@@ -160,16 +179,22 @@ public class ChestNet extends Command
 
                 if (blockEntity instanceof ChestBlockEntity)
                 {
-                    x = pos.getX();
-                    y = pos.getY();
-                    z = pos.getZ();
+                   int chestx = pos.getX();
+                   int chesty = pos.getY();
+                   int chestz = pos.getZ();
 
-                    blockPosArray = new int[]{x, y, z};
-                    LocationArray.add(blockPosArray);
+                   LOGGER.info(String.valueOf(chestx));
+
+                    blockPosArray = new int[]{chestx, chesty, chestz};
+                    locationArray.add(blockPosArray);
+                    LOGGER.info("Chest locations: " +
+                            locationArray.stream()
+                                    .map(Arrays::toString)
+                                    .collect(Collectors.joining(", ")));
                 }
             }
         }
-        return LocationArray;
+        return locationArray;
     }
 
 
