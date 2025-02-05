@@ -82,6 +82,11 @@ public class ChestNet extends Command
 
         BaritoneAPI.getSettings().allowSprint.value = true;
         BaritoneAPI.getSettings().primaryTimeoutMS.value = 2000L;
+        BaritoneAPI.getSettings().allowDownward.value = true;
+        BaritoneAPI.getSettings().allowBreak.value = true;
+        BaritoneAPI.getSettings().chatDebug.value = true;
+        BaritoneAPI.getSettings().allowDiagonalDescend.value = true;
+        BaritoneAPI.getSettings().allowDiagonalAscend.value = true;
 
         LOGGER.info("x: " + x + " y: " + y + " z: " + z);
 
@@ -107,35 +112,73 @@ public class ChestNet extends Command
                 {
                     List<int[]> chestLocationsArray = getChestLocation(x, y, z);
                     int indexCounter = chestLocationsArray.size();
-
-                    LOGGER.info("Chest spawners locations: " +
-                            chestLocationsArray.stream()
-                                    .map(Arrays::toString)
-                                    .collect(Collectors.joining(", ")));
-
-                    for (int chestIndex = 0; chestIndex < indexCounter; chestIndex++)
-                    {
-                        int[] aaa =chestLocationsArray.get(chestIndex);
-                        LOGGER.info(Arrays.toString(aaa));
-
-                        int chestX = (aaa[0]);
-                        int chestY = (aaa[1]);
-                        int chestZ = (aaa[2]);
-
-                        LOGGER.info(String.valueOf(chestX));
-
-                        BaritoneAPI.getProvider().getPrimaryBaritone().getCustomGoalProcess().setGoalAndPath(new GoalBlock(chestX, chestY, chestZ));
-                        LOGGER.info("Set New Goal to" + chestX + chestY + chestZ);
-                    }
+                    pathToChest(chestLocationsArray, 0, () -> pathing(a, index, scheduler));
                 }
 
-                pathing(a, index + 1, scheduler);
             }
             else
             {
                 LOGGER.info("Still pathing...");
             }
-        }, 0, 5, TimeUnit.SECONDS);
+        }, 0, 30, TimeUnit.SECONDS);
+
+    }
+
+    public void pathToChest(List<int[]> chestArray, int index, Runnable onComplete)
+    {
+        BaritoneAPI.getSettings().allowSprint.value = true;
+        BaritoneAPI.getSettings().primaryTimeoutMS.value = 2000L;
+        BaritoneAPI.getSettings().allowDownward.value = true;
+        BaritoneAPI.getSettings().allowBreak.value = true;
+        BaritoneAPI.getSettings().chatDebug.value = true;
+        BaritoneAPI.getSettings().allowDiagonalDescend.value = true;
+        BaritoneAPI.getSettings().allowDiagonalAscend.value = true;
+
+
+        if (index >= chestArray.size())
+        {
+            LOGGER.info("Chest Path Complte");
+            onComplete.run();
+            return;
+        }
+
+        LOGGER.info("Chest spawner locations: " +
+                chestArray.stream()
+                        .map(Arrays::toString)
+                        .collect(Collectors.joining(", ")));
+
+
+        int[] aaa =chestArray.get(index);
+        LOGGER.info(Arrays.toString(aaa));
+
+        int chestX = (aaa[0]);
+        int chestY = (aaa[1]);
+        int chestZ = (aaa[2]);
+
+        LOGGER.info("CHEST X LOCATION TEST: " + chestX);
+        Goal newGoal = new GoalBlock(chestX, chestY+1, chestZ);
+
+        BaritoneAPI.getProvider().getPrimaryBaritone().getCustomGoalProcess().setGoalAndPath(newGoal);
+
+        ScheduledExecutorService chestScheduler = Executors.newSingleThreadScheduledExecutor();
+        chestScheduler.scheduleAtFixedRate(() -> {
+
+        Vec3d playerPos = BaritoneAPI.getProvider().getPrimaryBaritone().getPlayerContext().playerFeetAsVec();
+        boolean isAtGoal = newGoal.isInGoal(BlockPos.ofFloored(playerPos));
+
+
+        if (isAtGoal || !BaritoneAPI.getProvider().getPrimaryBaritone().getCustomGoalProcess().isActive()
+                && !BaritoneAPI.getProvider().getPrimaryBaritone().getPathingBehavior().isPathing())
+        {
+            LOGGER.info("Chest Reached at: " + playerPos);
+            chestScheduler.shutdown();
+            pathToChest(chestArray, index + 1, onComplete);
+        }
+        else
+        {
+            LOGGER.info("Still Pathing");
+        }
+    }, 0, 10, TimeUnit.SECONDS);
 
     }
 
