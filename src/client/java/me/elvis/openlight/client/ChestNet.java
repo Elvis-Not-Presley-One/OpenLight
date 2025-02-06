@@ -64,8 +64,17 @@ public class ChestNet extends Command
 
         pathing(a, 0, scheduler);
         }
+
     public void pathing(List<String[]> a, int index, ScheduledExecutorService scheduler)
     {
+        BaritoneAPI.getSettings().allowSprint.value = true;
+        BaritoneAPI.getSettings().primaryTimeoutMS.value = 2000L;
+        BaritoneAPI.getSettings().allowDownward.value = true;
+        BaritoneAPI.getSettings().allowBreak.value = true;
+        BaritoneAPI.getSettings().chatDebug.value = true;
+        BaritoneAPI.getSettings().allowDiagonalDescend.value = true;
+        BaritoneAPI.getSettings().allowDiagonalAscend.value = true;
+
         if (index >= a.size())
         {
             LOGGER.info("Finished pathing; Index is done");
@@ -79,15 +88,6 @@ public class ChestNet extends Command
         int y = Integer.parseInt(mainArray[1]);
         int z = Integer.parseInt(mainArray[2]);
 
-
-        BaritoneAPI.getSettings().allowSprint.value = true;
-        BaritoneAPI.getSettings().primaryTimeoutMS.value = 2000L;
-        BaritoneAPI.getSettings().allowDownward.value = true;
-        BaritoneAPI.getSettings().allowBreak.value = true;
-        BaritoneAPI.getSettings().chatDebug.value = true;
-        BaritoneAPI.getSettings().allowDiagonalDescend.value = true;
-        BaritoneAPI.getSettings().allowDiagonalAscend.value = true;
-
         LOGGER.info("x: " + x + " y: " + y + " z: " + z);
 
         Goal goal = new GoalXZ(x, z);
@@ -100,7 +100,7 @@ public class ChestNet extends Command
             Vec3d playerPos = BaritoneAPI.getProvider().getPrimaryBaritone().getPlayerContext().playerFeetAsVec();
             boolean isAtGoal = goal.isInGoal(BlockPos.ofFloored(playerPos));
 
-
+            // we want to check to make sure that, we have reached the goal 100% no mistakes
             if (isAtGoal || !BaritoneAPI.getProvider().getPrimaryBaritone().getCustomGoalProcess().isActive()
                     && !BaritoneAPI.getProvider().getPrimaryBaritone().getPathingBehavior().isPathing())
             {
@@ -111,7 +111,6 @@ public class ChestNet extends Command
                 if (searchForChest(x, y, z))
                 {
                     List<int[]> chestLocationsArray = getChestLocation(x, y, z);
-                    int indexCounter = chestLocationsArray.size();
                     pathToChest(chestLocationsArray, 0, () -> pathing(a, index, scheduler));
                 }
 
@@ -126,6 +125,7 @@ public class ChestNet extends Command
 
     public void pathToChest(List<int[]> chestArray, int index, Runnable onComplete)
     {
+        // I dont know if these are global settings for B I would assume so but... just in case
         BaritoneAPI.getSettings().allowSprint.value = true;
         BaritoneAPI.getSettings().primaryTimeoutMS.value = 2000L;
         BaritoneAPI.getSettings().allowDownward.value = true;
@@ -148,12 +148,12 @@ public class ChestNet extends Command
                         .collect(Collectors.joining(", ")));
 
 
-        int[] aaa =chestArray.get(index);
-        LOGGER.info(Arrays.toString(aaa));
+        int[] singleChestArray =chestArray.get(index);
+        LOGGER.info(Arrays.toString(singleChestArray));
 
-        int chestX = (aaa[0]);
-        int chestY = (aaa[1]);
-        int chestZ = (aaa[2]);
+        int chestX = (singleChestArray[0]);
+        int chestY = (singleChestArray[1]);
+        int chestZ = (singleChestArray[2]);
 
         LOGGER.info("CHEST X LOCATION TEST: " + chestX);
         Goal newGoal = new GoalBlock(chestX, chestY+1, chestZ);
@@ -166,7 +166,7 @@ public class ChestNet extends Command
         Vec3d playerPos = BaritoneAPI.getProvider().getPrimaryBaritone().getPlayerContext().playerFeetAsVec();
         boolean isAtGoal = newGoal.isInGoal(BlockPos.ofFloored(playerPos));
 
-
+        // we want to check to make sure that, we have reached the goal 100% no mistakes
         if (isAtGoal || !BaritoneAPI.getProvider().getPrimaryBaritone().getCustomGoalProcess().isActive()
                 && !BaritoneAPI.getProvider().getPrimaryBaritone().getPathingBehavior().isPathing())
         {
@@ -214,6 +214,7 @@ public class ChestNet extends Command
         World world = MinecraftClient.getInstance().world;
         List<int[]> locationArray = new ArrayList<>();
         int[] blockPosArray;
+
         for (BlockPos pos : BlockPos.iterate(spawnerPos.add(-10, 0, -10), spawnerPos.add(10, 10, 10))) {
             BlockState state = world.getBlockState(pos);
 
@@ -246,7 +247,6 @@ public class ChestNet extends Command
         BlockPos spawnerPos = new BlockPos(x, y, z);
         World world = MinecraftClient.getInstance().world;
         boolean isThereChest = false;
-
 
         for (BlockPos pos : BlockPos.iterate(spawnerPos.add(-10, 0, -10), spawnerPos.add(10, 10, 10)))
         {
