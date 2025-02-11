@@ -14,7 +14,15 @@ import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.block.entity.ChestBlockEntity;
 import net.minecraft.block.entity.MobSpawnerBlockEntity;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.network.ClientPlayerEntity;
+import net.minecraft.client.world.ClientWorld;
+import net.minecraft.inventory.Inventory;
+import net.minecraft.item.ItemStack;
+import net.minecraft.util.Hand;
+import net.minecraft.util.collection.DefaultedList;
+import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Direction;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.World;
 import org.slf4j.Logger;
@@ -119,7 +127,7 @@ public class ChestNet extends Command
             {
                 LOGGER.info("Still pathing...");
             }
-        }, 0, 30, TimeUnit.SECONDS);
+        }, 0, 10, TimeUnit.SECONDS);
 
     }
 
@@ -170,6 +178,8 @@ public class ChestNet extends Command
         if (isAtGoal || !BaritoneAPI.getProvider().getPrimaryBaritone().getCustomGoalProcess().isActive()
                 && !BaritoneAPI.getProvider().getPrimaryBaritone().getPathingBehavior().isPathing())
         {
+
+            openAndSearchChest(chestX, chestY, chestZ);
             LOGGER.info("Chest Reached at: " + playerPos);
             chestScheduler.shutdown();
             pathToChest(chestArray, index + 1, onComplete);
@@ -179,6 +189,45 @@ public class ChestNet extends Command
             LOGGER.info("Still Pathing");
         }
     }, 0, 10, TimeUnit.SECONDS);
+
+    }
+
+    public void openAndSearchChest(int x, int y, int z)
+    {
+        ClientPlayerEntity player = MinecraftClient.getInstance().player;
+        ClientWorld world = MinecraftClient.getInstance().world;
+
+        if (world != null || player != null)
+        {
+            BlockPos chestPOS = new BlockPos(x,y,z);
+            BlockState chestState = world.getBlockState(chestPOS);
+
+            if (chestState.getBlock() instanceof ChestBlock)
+            {
+                LOGGER.info("Opening Chest");
+                MinecraftClient.getInstance().interactionManager.interactBlock(player,
+                        Hand.MAIN_HAND, new BlockHitResult(new Vec3d(x + .5, y + .5, z + .5 ),
+                                Direction.DOWN, chestPOS, false));
+
+                BlockEntity chestEnity = world.getBlockEntity(chestPOS);
+
+                if (chestEnity instanceof ChestBlockEntity chestBlockEntity) {
+
+                    Inventory inventory = chestBlockEntity;
+
+                    for (int i = 0; i < inventory.size(); i++)
+                    {
+                        ItemStack itemStack = inventory.getStack(i);
+                        LOGGER.info(i + " " + itemStack.toString());
+                    }
+
+                }
+
+
+            }
+        }
+
+
 
     }
 
