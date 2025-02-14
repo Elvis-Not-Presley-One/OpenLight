@@ -18,6 +18,7 @@ import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.client.world.ClientWorld;
 import net.minecraft.inventory.Inventory;
 import net.minecraft.item.ItemStack;
+import net.minecraft.nbt.NbtCompound;
 import net.minecraft.util.Hand;
 import net.minecraft.util.collection.DefaultedList;
 import net.minecraft.util.hit.BlockHitResult;
@@ -192,43 +193,48 @@ public class ChestNet extends Command
 
     }
 
-    public void openAndSearchChest(int x, int y, int z)
-    {
+    public void openAndSearchChest(int x, int y, int z) {
         ClientPlayerEntity player = MinecraftClient.getInstance().player;
         ClientWorld world = MinecraftClient.getInstance().world;
 
-        if (world != null || player != null)
-        {
-            BlockPos chestPOS = new BlockPos(x,y,z);
-            BlockState chestState = world.getBlockState(chestPOS);
+        if (world != null || player != null) {
+            BlockPos aboveChestPOS = new BlockPos(x, y, z);
+            BlockPos ChestPOS = new BlockPos(x, y, z);
 
-            if (chestState.getBlock() instanceof ChestBlock)
-            {
+            BlockState chestState = world.getBlockState(aboveChestPOS);
+
+
+            if (chestState.getBlock() instanceof ChestBlock) {
                 LOGGER.info("Opening Chest");
                 MinecraftClient.getInstance().interactionManager.interactBlock(player,
-                        Hand.MAIN_HAND, new BlockHitResult(new Vec3d(x + .5, y + .5, z + .5 ),
-                                Direction.DOWN, chestPOS, false));
+                        Hand.MAIN_HAND, new BlockHitResult(new Vec3d(x + .5, y + .5, z + .5),
+                                Direction.DOWN, aboveChestPOS, false));
+                BlockEntity chestEntity = world.getBlockEntity(ChestPOS);
 
-                BlockEntity chestEnity = world.getBlockEntity(chestPOS);
+                ScheduledExecutorService openChestScheduler = Executors.newSingleThreadScheduledExecutor();
+                openChestScheduler.scheduleAtFixedRate(() -> {
 
-                if (chestEnity instanceof ChestBlockEntity chestBlockEntity) {
+                    if (chestEntity instanceof ChestBlockEntity chest) {
+                        Inventory inventory = chest;
 
-                    Inventory inventory = chestBlockEntity;
+                        for (int i = 0; i < inventory.size(); i++) {
+                            ItemStack itemStack = inventory.getStack(i);
 
-                    for (int i = 0; i < inventory.size(); i++)
-                    {
-                        ItemStack itemStack = inventory.getStack(i);
-                        LOGGER.info(i + " " + itemStack.toString());
+                            if (!itemStack.isEmpty()) {
+                                String itemName = itemStack.getName().getString();
+                                int counter = itemStack.getCount();
+
+                                LOGGER.info("[Chest Slot]: " + i + ": " + counter + ": " + itemName);
+
+                            }
+                        }
+                        openChestScheduler.shutdown();
                     }
 
-                }
-
+                }, 0, 10, TimeUnit.SECONDS);
 
             }
         }
-
-
-
     }
 
     public boolean searchForSpawner(int x, int y, int z)
