@@ -142,6 +142,7 @@ public class ChestNet extends Command
         BaritoneAPI.getSettings().chatDebug.value = true;
         BaritoneAPI.getSettings().allowDiagonalDescend.value = true;
         BaritoneAPI.getSettings().allowDiagonalAscend.value = true;
+        BaritoneAPI.getSettings().allowInventory.value = true;
 
 
         if (index >= chestArray.size())
@@ -193,23 +194,25 @@ public class ChestNet extends Command
 
     }
 
-    public void openAndSearchChest(int x, int y, int z) {
+    public void openAndSearchChest(int x, int y, int z)
+    {
         ClientPlayerEntity player = MinecraftClient.getInstance().player;
         ClientWorld world = MinecraftClient.getInstance().world;
 
         if (world != null || player != null) {
-            BlockPos aboveChestPOS = new BlockPos(x, y, z);
-            BlockPos ChestPOS = new BlockPos(x, y, z);
+            BlockPos aboveChestPOS = new BlockPos(x, y+1, z);
+            BlockPos chestPOS = new BlockPos(x, y, z);
 
-            BlockState chestState = world.getBlockState(aboveChestPOS);
+            BlockState chestState = world.getBlockState(chestPOS);
 
 
-            if (chestState.getBlock() instanceof ChestBlock) {
+            if (chestState.getBlock() instanceof ChestBlock)
+            {
                 LOGGER.info("Opening Chest");
                 MinecraftClient.getInstance().interactionManager.interactBlock(player,
                         Hand.MAIN_HAND, new BlockHitResult(new Vec3d(x + .5, y + .5, z + .5),
-                                Direction.DOWN, aboveChestPOS, false));
-                BlockEntity chestEntity = world.getBlockEntity(ChestPOS);
+                                Direction.DOWN, aboveChestPOS, false)); //Maybe has to be true since were above
+                BlockEntity chestEntity = world.getBlockEntity(chestPOS);
 
                 ScheduledExecutorService openChestScheduler = Executors.newSingleThreadScheduledExecutor();
                 openChestScheduler.scheduleAtFixedRate(() -> {
