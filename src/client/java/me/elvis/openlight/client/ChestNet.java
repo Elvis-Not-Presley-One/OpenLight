@@ -9,6 +9,7 @@ import baritone.api.pathing.goals.GoalBlock;
 import baritone.api.pathing.goals.GoalXZ;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.ChestBlock;
+
 import net.minecraft.block.SpawnerBlock;
 import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.block.entity.ChestBlockEntity;
@@ -35,6 +36,8 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -53,14 +56,16 @@ import java.util.stream.Stream;
 
 public class ChestNet extends Command
 {
+    private final Set<BlockPos> openedChests = ConcurrentHashMap.newKeySet();
     public static final Logger LOGGER = LoggerFactory.getLogger("openlight");
-
+    private final ScheduledExecutorService openChestScheduler = Executors.newSingleThreadScheduledExecutor();
     // Need to get the parent of the users dir to prevent it from looking into run for some reason
     private static final Path ABSPATH = Paths.get(System.getProperty("user.dir")).getParent().resolve("Spawner Info/Test.csv").normalize();
 
     public ChestNet(IBaritone baritone)
     {
         super(baritone, "ChestNet");
+
     }
 
     @Override
@@ -111,7 +116,7 @@ public class ChestNet extends Command
 
             // we want to check to make sure that, we have reached the goal 100% no mistakes
             if (isAtGoal || !BaritoneAPI.getProvider().getPrimaryBaritone().getCustomGoalProcess().isActive()
-                    && !BaritoneAPI.getProvider().getPrimaryBaritone().getPathingBehavior().isPathing())
+                    || !BaritoneAPI.getProvider().getPrimaryBaritone().getPathingBehavior().isPathing())
             {
                 LOGGER.info("Goal reached at (" + x + ", " + z + ")!");
 
@@ -120,7 +125,7 @@ public class ChestNet extends Command
                 if (searchForChest(x, y, z))
                 {
                     List<int[]> chestLocationsArray = getChestLocation(x, y, z);
-                    pathToChest(chestLocationsArray, 0, () -> pathing(a, index, scheduler));
+                    pathToChest(chestLocationsArray, 0, () -> pathing(a, index+1, scheduler));
                 }
 
             }
@@ -178,13 +183,13 @@ public class ChestNet extends Command
 
         // we want to check to make sure that, we have reached the goal 100% no mistakes
         if (isAtGoal || !BaritoneAPI.getProvider().getPrimaryBaritone().getCustomGoalProcess().isActive()
-                && !BaritoneAPI.getProvider().getPrimaryBaritone().getPathingBehavior().isPathing())
+                || !BaritoneAPI.getProvider().getPrimaryBaritone().getPathingBehavior().isPathing())
         {
 
             openAndSearchChest(chestX, chestY, chestZ);
             LOGGER.info("Chest Reached at: " + playerPos);
             chestScheduler.shutdown();
-            pathToChest(chestArray, index + 1, onComplete);
+            //pathToChest(chestArray, index + 1, onComplete);
         }
         else
         {
@@ -205,37 +210,56 @@ public class ChestNet extends Command
 
             BlockState chestState = world.getBlockState(chestPOS);
 
+            if (!openedChests.add(chestPOS)) {
+                LOGGER.info("Chest at " + chestPOS + " already opened, skipping...");
+                return;
+            }
 
             if (chestState.getBlock() instanceof ChestBlock)
             {
                 LOGGER.info("Opening Chest");
-                MinecraftClient.getInstance().interactionManager.interactBlock(player,
-                        Hand.MAIN_HAND, new BlockHitResult(new Vec3d(x + .5, y + .5, z + .5),
-                                Direction.DOWN, aboveChestPOS, false)); //Maybe has to be true since were above
-                BlockEntity chestEntity = world.getBlockEntity(chestPOS);
+                MinecraftClient.getInstance().execute(() -> {
+                    MinecraftClient.getInstance().interactionManager.interactBlock(player,
+                            Hand.MAIN_HAND, new BlockHitResult(new Vec3d(x + .5, y + .5, z + .5),
+                                    Direction.DOWN, chestPOS, false));
+                });
 
-                ScheduledExecutorService openChestScheduler = Executors.newSingleThreadScheduledExecutor();
-                openChestScheduler.scheduleAtFixedRate(() -> {
+                openChestScheduler.schedule(() -> {
+                    MinecraftClient.getInstance().execute(() -> {
 
-                    if (chestEntity instanceof ChestBlockEntity chest) {
-                        Inventory inventory = chest;
 
-                        for (int i = 0; i < inventory.size(); i++) {
-                            ItemStack itemStack = inventory.getStack(i);
+                        if (!world.isChunkLoaded(chestPOS)) {
+                            LOGGER.warn("Chunk at {} is not loaded!", chestPOS);
+                            return;
+                        }
 
-                            if (!itemStack.isEmpty()) {
-                                String itemName = itemStack.getName().getString();
-                                int counter = itemStack.getCount();
+                        BlockState state = world.getBlockState(chestPOS);
+                        LOGGER.info("Block at {}: {}", chestPOS, state.getBlock());
 
-                                LOGGER.info("[Chest Slot]: " + i + ": " + counter + ": " + itemName);
 
+                        BlockEntity entity = world.getBlockEntity(chestPOS);
+                        if (entity != null) {
+                            LOGGER.info("Block entity type: " + entity.getClass().getSimpleName());
+                        }
+                        if (entity instanceof ChestBlockEntity chest) {
+                            Inventory inventory = chest;
+                            for (int i = 0; i < inventory.size(); i++) {
+                                ItemStack stack = inventory.getStack(i);
+                                if (!stack.isEmpty()) {
+                                    LOGGER.info("[Slot " + i + "]: " + stack.getCount() + " x " + stack.getItem().getName().getString());
+                                }
                             }
                         }
-                        openChestScheduler.shutdown();
-                    }
 
-                }, 0, 10, TimeUnit.SECONDS);
 
+                         else {
+                            LOGGER.warn("No chest entity found at " + chestPOS);
+                        }
+
+                        LOGGER.info("Closing Chest at " + chestPOS);
+                        player.closeHandledScreen();
+                    });
+                }, 5, TimeUnit.SECONDS);
             }
         }
     }
