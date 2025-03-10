@@ -7,6 +7,7 @@ import baritone.api.command.argument.IArgConsumer;
 import baritone.api.pathing.goals.Goal;
 import baritone.api.pathing.goals.GoalBlock;
 import baritone.api.pathing.goals.GoalXZ;
+import me.elvis.openlight.client.Discord.Bot.DiscordBot;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.ChestBlock;
 
@@ -18,15 +19,11 @@ import net.minecraft.block.entity.MobSpawnerBlockEntity;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.client.world.ClientWorld;
-import net.minecraft.inventory.Inventory;
 import net.minecraft.item.BlockItem;
 import net.minecraft.item.ItemStack;
-import net.minecraft.item.Items;
-import net.minecraft.nbt.NbtCompound;
 import net.minecraft.screen.GenericContainerScreenHandler;
 import net.minecraft.screen.ScreenHandler;
 import net.minecraft.util.Hand;
-import net.minecraft.util.collection.DefaultedList;
 import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
@@ -75,6 +72,8 @@ public class ChestNet extends Command {
     @Override
     public void execute(String label, IArgConsumer args) {
         List<String[]> a = csvReader();
+        DiscordBot aa = new DiscordBot();
+        aa.discordBot();
         LOGGER.info(String.valueOf(ABSPATH));
         LOGGER.info(Arrays.toString(a.get(0)));
 
@@ -203,6 +202,8 @@ public class ChestNet extends Command {
 
     public void openAndSearchChest(int x, int y, int z, Runnable onChestChecked)
     {
+        ArrayList<String> chestWithShulkerInv = new ArrayList<>();
+
         ClientPlayerEntity player = MinecraftClient.getInstance().player;
         ClientWorld world = MinecraftClient.getInstance().world;
 
@@ -235,15 +236,24 @@ public class ChestNet extends Command {
                                 LOGGER.info(stack.toString());
 
                                 if (!stack.isEmpty() && stack.getItem() instanceof BlockItem &&
-                                        ((BlockItem) stack.getItem()).getBlock() instanceof ShulkerBoxBlock) {
+                                        ((BlockItem) stack.getItem()).getBlock() instanceof ShulkerBoxBlock)
+                                {
+                                    chestWithShulkerInv.add(stack.getName().getString());
                                     hasShulker = true;
-                                    break;
+
                                 }
                             }
 
-                            if (hasShulker) {
-                                LOGGER.info("\n\n\n\nChest contains a Shulker Box!\n\n\n");
+                            if (hasShulker)
+                            {
+                                String shulkerFoundMsg = " \n\n ***Shulker found! :D X: " + x + " Y: " + y + " Z: " + z +
+                                        "\n\n Contents: *** " + String.join(", ", chestWithShulkerInv);
+
+                                LOGGER.info("\n\n\nChest contains a Shulker Box!\n\n\n");
+                                DiscordBot.sendDiscordMsg(shulkerFoundMsg);
                             }
+
+
                         } else {
                             LOGGER.warn("Failed to read chest contents - screen handler is not a GenericContainerScreenHandler.");
                         }
