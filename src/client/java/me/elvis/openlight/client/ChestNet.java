@@ -59,8 +59,7 @@ import java.util.stream.Stream;
 * con with super B, String name of the command
  */
 
-public class ChestNet extends Command
-{
+public class ChestNet extends Command {
     private final Set<BlockPos> openedChests = ConcurrentHashMap.newKeySet();
     public static final Logger LOGGER = LoggerFactory.getLogger("openlight");
     private final ScheduledExecutorService openChestScheduler = Executors.newSingleThreadScheduledExecutor();
@@ -68,15 +67,13 @@ public class ChestNet extends Command
     private static final Path ABSPATH = Paths.get(System.getProperty("user.dir")).getParent().resolve("Spawner Info/Test.csv").normalize();
     ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
 
-    public ChestNet(IBaritone baritone)
-    {
+    public ChestNet(IBaritone baritone) {
         super(baritone, "ChestNet");
 
     }
 
     @Override
-    public void execute(String label, IArgConsumer args)
-    {
+    public void execute(String label, IArgConsumer args) {
         List<String[]> a = csvReader();
         LOGGER.info(String.valueOf(ABSPATH));
         LOGGER.info(Arrays.toString(a.get(0)));
@@ -85,8 +82,7 @@ public class ChestNet extends Command
 
     }
 
-    public void pathing(List<String[]> a, int index, ScheduledExecutorService scheduler)
-    {
+    public void pathing(List<String[]> a, int index, ScheduledExecutorService scheduler) {
         BaritoneAPI.getSettings().allowSprint.value = true;
         BaritoneAPI.getSettings().primaryTimeoutMS.value = 2000L;
         BaritoneAPI.getSettings().allowDownward.value = true;
@@ -95,8 +91,7 @@ public class ChestNet extends Command
         BaritoneAPI.getSettings().allowDiagonalDescend.value = true;
         BaritoneAPI.getSettings().allowDiagonalAscend.value = true;
 
-        if (index >= a.size())
-        {
+        if (index >= a.size()) {
             LOGGER.info("Finished pathing; Index is done");
             scheduler.shutdown();
             return;
@@ -122,29 +117,24 @@ public class ChestNet extends Command
 
             // we want to check to make sure that, we have reached the goal 100% no mistakes
             if (isAtGoal || !BaritoneAPI.getProvider().getPrimaryBaritone().getCustomGoalProcess().isActive()
-                    || !BaritoneAPI.getProvider().getPrimaryBaritone().getPathingBehavior().isPathing())
-            {
+                    || !BaritoneAPI.getProvider().getPrimaryBaritone().getPathingBehavior().isPathing()) {
                 LOGGER.info("Goal reached at (" + x + ", " + z + ")!");
 
                 searchForSpawner(x, y, z);
 
-                if (searchForChest(x, y, z))
-                {
+                if (searchForChest(x, y, z)) {
                     List<int[]> chestLocationsArray = getChestLocation(x, y, z);
-                    pathToChest(chestLocationsArray, 0, () -> pathing(a, index+1, scheduler));
+                    pathToChest(chestLocationsArray, 0, () -> pathing(a, index + 1, scheduler));
                 }
 
-            }
-            else
-            {
+            } else {
                 LOGGER.info("Still pathing...");
             }
         }, 0, 10, TimeUnit.SECONDS);
 
     }
 
-    public void pathToChest(List<int[]> chestArray, int index, Runnable onComplete)
-    {
+    public void pathToChest(List<int[]> chestArray, int index, Runnable onComplete) {
         // I dont know if these are global settings for B I would assume so but... just in case
         BaritoneAPI.getSettings().allowSprint.value = true;
         BaritoneAPI.getSettings().primaryTimeoutMS.value = 2000L;
@@ -156,8 +146,7 @@ public class ChestNet extends Command
         BaritoneAPI.getSettings().allowInventory.value = true;
 
 
-        if (index >= chestArray.size())
-        {
+        if (index >= chestArray.size()) {
             LOGGER.info("Chest Path Complte");
             onComplete.run();
             return;
@@ -169,7 +158,7 @@ public class ChestNet extends Command
                         .collect(Collectors.joining(", ")));
 
 
-        int[] singleChestArray =chestArray.get(index);
+        int[] singleChestArray = chestArray.get(index);
         LOGGER.info(Arrays.toString(singleChestArray));
 
         int chestX = (singleChestArray[0]);
@@ -177,36 +166,42 @@ public class ChestNet extends Command
         int chestZ = (singleChestArray[2]);
 
         LOGGER.info("CHEST X LOCATION TEST: " + chestX);
-        Goal newGoal = new GoalBlock(chestX, chestY+1, chestZ);
+        Goal newGoal = new GoalBlock(chestX, chestY + 1, chestZ);
 
         BaritoneAPI.getProvider().getPrimaryBaritone().getCustomGoalProcess().setGoalAndPath(newGoal);
 
         ScheduledExecutorService chestScheduler = Executors.newSingleThreadScheduledExecutor();
         chestScheduler.scheduleAtFixedRate(() -> {
 
-        Vec3d playerPos = BaritoneAPI.getProvider().getPrimaryBaritone().getPlayerContext().playerFeetAsVec();
-        boolean isAtGoal = newGoal.isInGoal(BlockPos.ofFloored(playerPos));
+            Vec3d playerPos = BaritoneAPI.getProvider().getPrimaryBaritone().getPlayerContext().playerFeetAsVec();
+            boolean isAtGoal = newGoal.isInGoal(BlockPos.ofFloored(playerPos));
 
 
-        // we want to check to make sure that, we have reached the goal 100% no mistakes
-        if (isAtGoal || !BaritoneAPI.getProvider().getPrimaryBaritone().getCustomGoalProcess().isActive()
-                || !BaritoneAPI.getProvider().getPrimaryBaritone().getPathingBehavior().isPathing())
-        {
+            if (isAtGoal || !BaritoneAPI.getProvider().getPrimaryBaritone().getCustomGoalProcess().isActive()
+                    || !BaritoneAPI.getProvider().getPrimaryBaritone().getPathingBehavior().isPathing()) {
 
-            openAndSearchChest(chestX, chestY, chestZ);
-            LOGGER.info("Chest Reached at: " + playerPos);
-            chestScheduler.shutdown();
-            //pathToChest(chestArray, index + 1, onComplete);
-        }
-        else
-        {
-            LOGGER.info("Still Pathing");
-        }
-    }, 0, 10, TimeUnit.SECONDS);
+                chestScheduler.shutdown();
 
+                openAndSearchChest(chestX, chestY, chestZ, () -> {
+                    LOGGER.info("Finished searching chest, moving to next...");
+
+                    int indexCheck = index + 1;
+                    if (indexCheck < chestArray.size()) {
+                        pathToChest(chestArray, index + 1, onComplete);
+                    }
+                    else
+                    {
+                        LOGGER.info("All chests in the room checked, running onComplete...");
+                        onComplete.run();
+                    }
+                });
+            }
+        }, 0, 10, TimeUnit.SECONDS);
     }
 
-    public void openAndSearchChest(int x, int y, int z)
+
+
+    public void openAndSearchChest(int x, int y, int z, Runnable onChestChecked)
     {
         ClientPlayerEntity player = MinecraftClient.getInstance().player;
         ClientWorld world = MinecraftClient.getInstance().world;
@@ -231,7 +226,6 @@ public class ChestNet extends Command
                             return;
                         }
 
-                        // FIX: Read from the player's open screen handler instead of block entity
                         ScreenHandler screenHandler = player.currentScreenHandler;
                         if (screenHandler instanceof GenericContainerScreenHandler) {
                             List<ItemStack> stacks = screenHandler.getStacks();
@@ -254,13 +248,16 @@ public class ChestNet extends Command
                             LOGGER.warn("Failed to read chest contents - screen handler is not a GenericContainerScreenHandler.");
                         }
 
-                        // FIX: Close screen on the render thread
                         MinecraftClient.getInstance().execute(() -> {
                             player.closeHandledScreen();
                         });
 
+                        if (onChestChecked != null)
+                        {
+                            onChestChecked.run();
+                        }
                     });
-                }, 2, TimeUnit.SECONDS); // Adjust delay if needed
+                }, 2, TimeUnit.SECONDS);
             }
         }
     }
