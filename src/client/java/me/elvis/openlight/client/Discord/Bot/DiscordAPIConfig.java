@@ -18,6 +18,10 @@ public class DiscordAPIConfig
 
         return apiKey;
     }
+
+    //Note stored into the system enviroment to hide both channel and api token
+    // only certin systems are allowed to run the bot for this specfic bot
+    // others if they want to run the bot they can add their own discord token and also channel id
     public static String getChannelID()
     {
         String ID = System.getenv("DISCORD-CHANNEL-ID");
