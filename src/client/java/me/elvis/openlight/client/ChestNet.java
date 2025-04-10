@@ -54,6 +54,16 @@ import java.util.stream.Stream;
 * getLongDesc
 * execute
 * con with super B, String name of the command
+*
+*
+*
+*
+* Need to add a baritone config method ran first in the excute
+*
+* also need to fix the baritone is at goal and
+* replace it with a method the checks useing the
+* norm of u-v
+*
  */
 
 public class ChestNet extends Command {
@@ -61,8 +71,9 @@ public class ChestNet extends Command {
     public static final Logger LOGGER = LoggerFactory.getLogger("openlight");
     private final ScheduledExecutorService openChestScheduler = Executors.newSingleThreadScheduledExecutor();
     // Need to get the parent of the users dir to prevent it from looking into run for some reason
-    private static final Path ABSPATH = Paths.get(System.getProperty("user.dir")).getParent().resolve("Spawner Info/Test.csv").normalize();
+    private static final Path ABSPATH = Paths.get(System.getProperty("user.dir")).getParent().resolve("Spawner Info/FilesSpawners.csv").normalize();
     ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+    public static final int DELAY = 10;
 
     public ChestNet(IBaritone baritone) {
         super(baritone, "ChestNet");
@@ -104,33 +115,39 @@ public class ChestNet extends Command {
 
         LOGGER.info("x: " + x + " y: " + y + " z: " + z);
 
-        Goal goal = new GoalXZ(x, z);
-        BaritoneAPI.getProvider().getPrimaryBaritone().getCustomGoalProcess().setGoalAndPath(goal);
-
-
-        scheduler.scheduleAtFixedRate(() ->
+        if (Math.abs(x) <= 5000 || Math.abs(z) <= 5000)
         {
+            pathing(a, index + 1, scheduler);
+        }
+        else {
 
-            Vec3d playerPos = BaritoneAPI.getProvider().getPrimaryBaritone().getPlayerContext().playerFeetAsVec();
-            boolean isAtGoal = goal.isInGoal(BlockPos.ofFloored(playerPos));
+            Goal goal = new GoalXZ(x, z);
+            BaritoneAPI.getProvider().getPrimaryBaritone().getCustomGoalProcess().setGoalAndPath(goal);
 
-            // we want to check to make sure that, we have reached the goal 100% no mistakes
-            if (isAtGoal || !BaritoneAPI.getProvider().getPrimaryBaritone().getCustomGoalProcess().isActive()
-                    || !BaritoneAPI.getProvider().getPrimaryBaritone().getPathingBehavior().isPathing()) {
-                LOGGER.info("Goal reached at (" + x + ", " + z + ")!");
+            scheduler.scheduleAtFixedRate(() ->
+            {
+                Vec3d playerPos = BaritoneAPI.getProvider().getPrimaryBaritone().getPlayerContext().playerFeetAsVec();
+                boolean isAtGoal = goal.isInGoal(BlockPos.ofFloored(playerPos));
 
-                searchForSpawner(x, y, z);
+                // we want to check to make sure that, we have reached the goal 100% no mistakes
+                if (isAtGoal || !BaritoneAPI.getProvider().getPrimaryBaritone().getCustomGoalProcess().isActive()
+                        || !BaritoneAPI.getProvider().getPrimaryBaritone().getPathingBehavior().isPathing()) {
+                    LOGGER.info("Goal reached at (" + x + ", " + z + ")!");
 
-                if (searchForChest(x, y, z)) {
-                    List<int[]> chestLocationsArray = getChestLocation(x, y, z);
-                    pathToChest(chestLocationsArray, 0, () -> pathing(a, index + 1, scheduler));
+                    boolean isThereAChest = searchForChest(x, y, z);
+
+                    if (isThereAChest) {
+                        List<int[]> chestLocationsArray = getChestLocation(x, y, z);
+                        pathToChest(chestLocationsArray, 0, () -> pathing(a, index + 1, scheduler));
+                    } else {
+                        pathing(a, index + 1, scheduler);
+                    }
+
+                } else {
+                    LOGGER.info("Still pathing...");
                 }
-
-            } else {
-                LOGGER.info("Still pathing...");
-            }
-        }, 0, 10, TimeUnit.SECONDS);
-
+            }, 0, DELAY, TimeUnit.SECONDS);
+        }
     }
 
     public void pathToChest(List<int[]> chestArray, int index, Runnable onComplete) {
@@ -195,7 +212,7 @@ public class ChestNet extends Command {
                     }
                 });
             }
-        }, 0, 10, TimeUnit.SECONDS);
+        }, 0, DELAY, TimeUnit.SECONDS);
     }
 
 
@@ -247,7 +264,7 @@ public class ChestNet extends Command {
                             if (hasShulker)
                             {
                                 String shulkerFoundMsg = " \n\n ***Shulker found! :D X: " + x + " Y: " + y + " Z: " + z +
-                                        "\n\n Contents: *** " + String.join(", ", chestWithShulkerInv);
+                                        "\n Contents: *** " + String.join(", ", chestWithShulkerInv);
 
                                 LOGGER.info("\n\n\nChest contains a Shulker Box!\n\n\n");
                                 DiscordBot.sendDiscordMsg(shulkerFoundMsg);
@@ -267,7 +284,7 @@ public class ChestNet extends Command {
                             onChestChecked.run();
                         }
                     });
-                }, 2, TimeUnit.SECONDS);
+                }, DELAY, TimeUnit.SECONDS);
             }
         }
     }
