@@ -8,11 +8,8 @@ import baritone.api.pathing.goals.Goal;
 import baritone.api.pathing.goals.GoalBlock;
 import baritone.api.pathing.goals.GoalXZ;
 import me.elvis.openlight.client.Discord.Bot.DiscordBot;
-import net.minecraft.block.BlockState;
-import net.minecraft.block.ChestBlock;
+import net.minecraft.block.*;
 
-import net.minecraft.block.ShulkerBoxBlock;
-import net.minecraft.block.SpawnerBlock;
 import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.block.entity.ChestBlockEntity;
 import net.minecraft.block.entity.MobSpawnerBlockEntity;
@@ -82,6 +79,7 @@ public class ChestNet extends Command {
 
     @Override
     public void execute(String label, IArgConsumer args) {
+        baritoneConfig();
         List<String[]> a = csvReader();
         DiscordBot aa = new DiscordBot();
         aa.discordBot();
@@ -93,13 +91,7 @@ public class ChestNet extends Command {
     }
 
     public void pathing(List<String[]> a, int index, ScheduledExecutorService scheduler) {
-        BaritoneAPI.getSettings().allowSprint.value = true;
-        BaritoneAPI.getSettings().primaryTimeoutMS.value = 2000L;
-        BaritoneAPI.getSettings().allowDownward.value = true;
-        BaritoneAPI.getSettings().allowBreak.value = true;
-        BaritoneAPI.getSettings().chatDebug.value = true;
-        BaritoneAPI.getSettings().allowDiagonalDescend.value = true;
-        BaritoneAPI.getSettings().allowDiagonalAscend.value = true;
+        ArrayList<Integer> getBlockPOS = new ArrayList<>();
 
         if (index >= a.size()) {
             LOGGER.info("Finished pathing; Index is done");
@@ -113,7 +105,10 @@ public class ChestNet extends Command {
         int y = Integer.parseInt(mainArray[1]);
         int z = Integer.parseInt(mainArray[2]);
 
-        LOGGER.info("x: " + x + " y: " + y + " z: " + z);
+        getBlockPOS.add(x);
+        getBlockPOS.add(y);
+        getBlockPOS.add(z);
+
 
         if (Math.abs(x) <= 5000 || Math.abs(z) <= 5000)
         {
@@ -124,14 +119,13 @@ public class ChestNet extends Command {
             Goal goal = new GoalXZ(x, z);
             BaritoneAPI.getProvider().getPrimaryBaritone().getCustomGoalProcess().setGoalAndPath(goal);
 
+
             scheduler.scheduleAtFixedRate(() ->
             {
                 Vec3d playerPos = BaritoneAPI.getProvider().getPrimaryBaritone().getPlayerContext().playerFeetAsVec();
-                boolean isAtGoal = goal.isInGoal(BlockPos.ofFloored(playerPos));
 
                 // we want to check to make sure that, we have reached the goal 100% no mistakes
-                if (isAtGoal || !BaritoneAPI.getProvider().getPrimaryBaritone().getCustomGoalProcess().isActive()
-                        || !BaritoneAPI.getProvider().getPrimaryBaritone().getPathingBehavior().isPathing()) {
+                if (isBaritoneNearGoal(getBlockPOS, playerPos)) {
                     LOGGER.info("Goal reached at (" + x + ", " + z + ")!");
 
                     boolean isThereAChest = searchForChest(x, y, z);
@@ -151,16 +145,8 @@ public class ChestNet extends Command {
     }
 
     public void pathToChest(List<int[]> chestArray, int index, Runnable onComplete) {
-        // I dont know if these are global settings for B I would assume so but... just in case
-        BaritoneAPI.getSettings().allowSprint.value = true;
-        BaritoneAPI.getSettings().primaryTimeoutMS.value = 2000L;
-        BaritoneAPI.getSettings().allowDownward.value = true;
-        BaritoneAPI.getSettings().allowBreak.value = true;
-        BaritoneAPI.getSettings().chatDebug.value = true;
-        BaritoneAPI.getSettings().allowDiagonalDescend.value = true;
-        BaritoneAPI.getSettings().allowDiagonalAscend.value = true;
-        BaritoneAPI.getSettings().allowInventory.value = true;
 
+        ArrayList<Integer> goalBlockPOS = new ArrayList<>();
 
         if (index >= chestArray.size()) {
             LOGGER.info("Chest Path Complte");
@@ -181,6 +167,10 @@ public class ChestNet extends Command {
         int chestY = (singleChestArray[1]);
         int chestZ = (singleChestArray[2]);
 
+        goalBlockPOS.add(chestX);
+        goalBlockPOS.add(chestY+1);
+        goalBlockPOS.add(chestZ);
+
         LOGGER.info("CHEST X LOCATION TEST: " + chestX);
         Goal newGoal = new GoalBlock(chestX, chestY + 1, chestZ);
 
@@ -190,11 +180,8 @@ public class ChestNet extends Command {
         chestScheduler.scheduleAtFixedRate(() -> {
 
             Vec3d playerPos = BaritoneAPI.getProvider().getPrimaryBaritone().getPlayerContext().playerFeetAsVec();
-            boolean isAtGoal = newGoal.isInGoal(BlockPos.ofFloored(playerPos));
 
-
-            if (isAtGoal || !BaritoneAPI.getProvider().getPrimaryBaritone().getCustomGoalProcess().isActive()
-                    || !BaritoneAPI.getProvider().getPrimaryBaritone().getPathingBehavior().isPathing()) {
+            if (isBaritoneNearGoal(goalBlockPOS, playerPos)) {
 
                 chestScheduler.shutdown();
 
@@ -390,6 +377,36 @@ public class ChestNet extends Command {
             e.printStackTrace();
         }
         return fullList;
+    }
+
+    public void baritoneConfig()
+    {
+        BaritoneAPI.getSettings().allowSprint.value = true;
+        BaritoneAPI.getSettings().primaryTimeoutMS.value = 2000L;
+        BaritoneAPI.getSettings().allowDownward.value = true;
+        BaritoneAPI.getSettings().allowBreak.value = true;
+        BaritoneAPI.getSettings().chatDebug.value = true;
+        BaritoneAPI.getSettings().allowDiagonalDescend.value = true;
+        BaritoneAPI.getSettings().allowDiagonalAscend.value = true;
+        BaritoneAPI.getSettings().allowParkour.value = true;
+        BaritoneAPI.getSettings().allowPlace.value = true;
+        BaritoneAPI.getSettings().allowParkourPlace.value = true;
+        BaritoneAPI.getSettings().allowParkourAscend.value = true;
+        BaritoneAPI.getSettings().allowVines.value = true;
+    }
+
+    public boolean isBaritoneNearGoal(ArrayList<Integer> blockPOSOfGoal, Vec3d playerPOS)
+    {
+        BlockPos playerBlockPos = BlockPos.ofFloored(playerPOS);
+
+        double vectorX = blockPOSOfGoal.get(0) - playerBlockPos.getX();
+        double vectorY = blockPOSOfGoal.get(1) - playerBlockPos.getY();
+        double vectorZ = blockPOSOfGoal.get(2) - playerBlockPos.getZ();
+
+        //normaly for the norm you want to sqrt but for performance no need for it
+        double getNorm = vectorX * vectorX + vectorY * vectorY + vectorZ * vectorZ;
+
+        return getNorm <= 2.5;
     }
 
 
