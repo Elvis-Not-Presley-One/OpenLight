@@ -68,7 +68,7 @@ public class ChestNet extends Command {
     public static final Logger LOGGER = LoggerFactory.getLogger("openlight");
     private final ScheduledExecutorService openChestScheduler = Executors.newSingleThreadScheduledExecutor();
     // Need to get the parent of the users dir to prevent it from looking into run for some reason
-    private static final Path ABSPATH = Paths.get(System.getProperty("user.dir")).getParent().resolve("Spawner Info/FilesSpawners.csv").normalize();
+
     ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
     public static final int DELAY = 10;
 
@@ -83,8 +83,6 @@ public class ChestNet extends Command {
         List<String[]> a = csvReader();
         DiscordBot aa = new DiscordBot();
         aa.discordBot();
-        LOGGER.info(String.valueOf(ABSPATH));
-        LOGGER.info(Arrays.toString(a.get(0)));
 
         pathing(a, 0, scheduler);
 
@@ -359,25 +357,30 @@ public class ChestNet extends Command {
         return isThereChest;
     }
 
-    public List<String[]> csvReader()
-    {
-        String line = "";
+    public List<String[]> csvReader() {
         String splitBy = ",";
-        ArrayList<String[]> fullList = new ArrayList<>();
-        try
-        {
-            BufferedReader br = new BufferedReader(new FileReader(String.valueOf(ABSPATH)));
-            while ((line = br.readLine()) != null) {
+        List<String[]> fullList = new ArrayList<>();
 
+        InputStream inputStream = getClass().getClassLoader().getResourceAsStream("FilesSpawners.csv");
+
+        if (inputStream == null) {
+            LOGGER.info("Could not find 'FilesSpawners.csv' in resources.");
+            return fullList;
+        }
+
+        try (BufferedReader br = new BufferedReader(new InputStreamReader(inputStream))) {
+            String line;
+            while ((line = br.readLine()) != null) {
                 String[] coords = line.split(splitBy);
                 fullList.add(coords);
             }
-        } catch (IOException e)
-        {
+        } catch (IOException e) {
             e.printStackTrace();
         }
+
         return fullList;
     }
+
 
     public void baritoneConfig()
     {
@@ -397,6 +400,7 @@ public class ChestNet extends Command {
 
     public boolean isBaritoneNearGoal(ArrayList<Integer> blockPOSOfGoal, Vec3d playerPOS)
     {
+        // yay more linear algebra fuck my life
         BlockPos playerBlockPos = BlockPos.ofFloored(playerPOS);
 
         double vectorX = blockPOSOfGoal.get(0) - playerBlockPos.getX();

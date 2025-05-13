@@ -17,13 +17,6 @@
       "me.elvis.openlight.Openlight"
     ]
   },
-  "mixins": [
-    "openlight.mixins.json",
-    {
-      "config": "openlight.client.mixins.json",
-      "environment": "client"
-    }
-  ],
   "depends": {
     "fabricloader": ">=${loader_version}",
     "fabric": "*",
